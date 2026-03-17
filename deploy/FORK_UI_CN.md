@@ -10,6 +10,7 @@
 
 - 本地源码构建：`deploy/docker-compose.custom.yml`
 - 远端服务器拉 GHCR 镜像：`deploy/docker-compose.ghcr.yml`
+- 服务器切换脚本：`deploy/use-custom-ui.sh`、`deploy/use-official-ui.sh`
 
 ## 推荐分支
 
@@ -76,6 +77,14 @@ ghcr.io/emuio/sub2api:sha-abc1234
 - Packages 权限正常
 - 如果镜像仓库不是公开的，服务器需要先登录 `ghcr.io`
 
+这个 workflow 已经显式开启：
+
+```yaml
+FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+```
+
+这样可以提前验证 Node 24 兼容性，避免之后被 GitHub 默认切换时再暴露问题。
+
 ## 远端 Docker 服务器部署
 
 如果你已经在服务器上跑着官方版，并且当前目录是：
@@ -118,6 +127,44 @@ echo <GHCR_PAT> | docker login ghcr.io -u <github_username> --password-stdin
 - `read:packages`
 
 如果你后面把包设成公开镜像，服务器通常不需要登录。
+
+## 服务器切换脚本
+
+如果你希望在服务器上更省事，建议把下面两个脚本放进：
+
+```bash
+~/sub2api-deploy
+```
+
+脚本文件：
+
+- `use-custom-ui.sh`
+- `use-official-ui.sh`
+
+切到自定义 UI：
+
+```bash
+cd ~/sub2api-deploy
+./use-custom-ui.sh
+```
+
+如果你想切某个特定 tag：
+
+```bash
+./use-custom-ui.sh ghcr.io/emuio/sub2api:sha-abc1234
+```
+
+回退官方镜像：
+
+```bash
+cd ~/sub2api-deploy
+./use-official-ui.sh
+```
+
+行为说明：
+
+- `use-custom-ui.sh` 会自动写入 `docker-compose.ghcr.yml`，然后拉取并启动自定义镜像
+- `use-official-ui.sh` 会删除 `docker-compose.ghcr.yml`，然后按原始 `docker-compose.yml` 回退官方镜像
 
 ## 和官方同步
 
