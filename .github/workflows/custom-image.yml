@@ -25,6 +25,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Resolve upstream release version
+        id: upstream_version
+        run: |
+          set -euo pipefail
+          VERSION_FALLBACK="$(tr -d '\r\n' < backend/cmd/server/VERSION)"
+          API_URL="https://api.github.com/repos/Wei-Shaw/sub2api/releases/latest"
+          VERSION="$(curl -fsSL "${API_URL}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].lstrip("v"))')"
+          if [ -z "${VERSION}" ]; then
+            VERSION="${VERSION_FALLBACK}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -49,9 +61,11 @@ jobs:
             PRIMARY_TAG="ui-custom"
           fi
           SHORT_SHA="$(git rev-parse --short HEAD)"
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
           echo "primary_tag=${PRIMARY_TAG}" >> "$GITHUB_OUTPUT"
           echo "sha_tag=sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "build_date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -60,9 +74,14 @@ jobs:
           file: ./Dockerfile
           push: true
           platforms: linux/amd64
+          build-args: |
+            VERSION=${{ steps.upstream_version.outputs.version }}
+            COMMIT=${{ github.sha }}
+            DATE=${{ steps.vars.outputs.build_date }}
           tags: |
             ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.primary_tag }}
             ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.sha_tag }}
           labels: |
+            org.opencontainers.image.version=${{ steps.upstream_version.outputs.version }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
