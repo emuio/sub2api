@@ -1,0 +1,4 @@
+services:
+  sub2api:
+    image: ${SUB2API_IMAGE:-ghcr.io/emuio/sub2api:ui-custom}
+    pull_policy: always
